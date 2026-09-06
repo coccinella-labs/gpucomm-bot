@@ -1,6 +1,6 @@
 # gpucomm-bot
 
-GPU-aware automation and CI engine for the gpucomm organization.
+GPU-aware automation and CI engine.
 
 ## Features
 - GPU / CUDA validation in PRs
