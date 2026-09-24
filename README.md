@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Coccinella-Labs/gpucomm-bot/main/.github/assets/thumbnail.png" alt="gpucomm-bot" width="100%">
+  <img src="https://raw.githubusercontent.com/coccinella-labs/gpucomm-bot/main/.github/assets/thumbnail.png" alt="gpucomm-bot" width="100%">
 </p>
 
 # gpucomm-bot
