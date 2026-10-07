@@ -20,11 +20,11 @@ To create the GitHub App itself, go to GitHub Settings > Developer settings > Gi
 
 ## Architecture
 
-GPUComm-Bot is structured around three main components. The webhook handler at `app/webhook.js` receives events from GitHub (PR opened/updated, issue created, release published) and routes them to appropriate handlers. The command processor at `app/commands.js` handles slash commands like `/gpu-check`, `/benchmark`, `/pause`, and `/analyze` by parsing the command from PR/issue comments and executing the corresponding action. The CI integration at `.github/workflows/gpu.yml` runs on self-hosted runners and executes CUDA and PyTorch smoke tests when a PR is labeled or titled with GPU-related keywords.
+GPUComm-Bot is structured around three main components. The webhook entry point at `app/main.js` receives events from GitHub and routes them through `app/routes.js` to handlers in `app/handlers/` (PR opened/updated, issue created, release published). Signature verification lives in `app/webhook/verify.js` and GitHub API authentication in `app/github/`. There is no slash-command processor; no code parses commands from comments. The CI integration at `.github/workflows/gpu.yml` runs on self-hosted runners and executes CUDA and PyTorch smoke tests when a PR is labeled or titled with GPU-related keywords.
 
 The flow is event-driven. When a PR is opened, the webhook handler analyzes the title and changed files. If GPU-related changes are detected, the bot automatically applies the `gpu-required` label (configurable via `GPUCOMM_GPU_LABEL`). This label gates the self-hosted GPU CI workflow, ensuring GPU tests only run when needed. When a user types a slash command in a PR or issue comment, the webhook handler parses it, invokes the corresponding command handler, and posts results back as a comment. The commands provide a manual interface for validation and benchmarking outside the automatic PR flow.
 
-Key code anchors are `app/webhook.js` (event routing), `app/commands.js` (command processing and execution), `app/auth.js` (GitHub API authentication), and `.github/workflows/gpu.yml` (CI workflow for GPU validation).
+Key code anchors are `app/main.js` (entry point), `app/routes.js` (event routing), `app/handlers/` (PR, issue, and release handlers), `app/github/` (API authentication and client), and `.github/workflows/gpu.yml` (CI workflow for GPU validation).
 
 ## Configuration
 
@@ -34,9 +34,9 @@ For GPU validation, `GPUCOMM_ENFORCE_CUDA_VERSION` can be set to `true` to requi
 
 ## Features
 
-The bot automatically detects GPU-related changes in PRs and applies the `gpu-required` label if the PR title contains keywords like "gpu", "cuda", or if changed files indicate GPU code. This label gates the self-hosted GPU runner, ensuring expensive GPU tests only run when relevant. Manual slash commands provide additional control: `/gpu-check` forces GPU validation even without the label, `/benchmark` triggers performance measurement workflows, `/pause` temporarily disables automation on a PR, and `/analyze` runs validation without modifying PR state.
+The bot detects GPU-related PRs by title keywords ("gpu", "cuda") and applies the configured label, which gates the self-hosted GPU runner. There are no manual slash commands; validation runs automatically on matching PRs.
 
-When a GPU PR is detected or when a user runs `/gpu-check`, the bot comments on the PR and ensures the CI workflow is queued. The self-hosted GPU workflow runs CUDA smoke tests (compiling and running a small CUDA kernel) and optionally PyTorch smoke tests (importing PyTorch and running a simple tensor operation). Results are posted back to the PR. For releases, the bot can automatically trigger benchmarks to validate performance before shipping.
+When a GPU PR is detected, the bot comments on the PR and ensures the CI workflow is queued. The self-hosted GPU workflow runs CUDA smoke tests (compiling and running a small CUDA kernel) and optionally PyTorch smoke tests (importing PyTorch and running a simple tensor operation). Results are posted back to the PR. For releases, the bot can automatically trigger benchmarks to validate performance before shipping.
 
 ## CI Integration
 
@@ -54,15 +54,13 @@ Railway was initially used but the free trial expired; Render was chosen as a re
 
 ## Commands
 
-Slash commands provide manual control over bot actions. Typing `/gpu-check` in a PR comment forces GPU validation to run immediately, regardless of labels or title. `/benchmark` triggers performance testing workflows before release or on demand. `/pause` temporarily disables automation on a PR without removing labels, useful if you want to debug locally first. `/analyze` runs validation and posts a summary without modifying PR state. All commands post results back to the PR or issue as bot comments.
-
-Commands are case-insensitive. `/GPU-CHECK`, `/gpu-check`, and `/Gpu-Check` all work. The bot parses commands from the first word of a comment, so a comment like `Please /gpu-check this before merge` will trigger GPU validation.
+There are no slash commands. Validation runs automatically when a PR title matches GPU keywords. If manual triggering is needed, it has to be built first; see Contributing for where command handling would live.
 
 ## Contributing
 
 Fork the repository, create a feature branch, make changes to `app/`, add or update scripts in `scripts/`, test locally with `npm start`, and open a PR. Code standards: use the provided `.env.example` as a template for configuration, keep command handlers focused (one action per command), and test webhook payload parsing with sample payloads in `docs/` if available.
 
-When adding a new command, implement it in `app/commands.js` as an exported function, add a case for it in the command dispatcher, and test it against a real GitHub App instance locally. When adding a CI check (e.g., a new CUDA version requirement), update `config/gpu.json` and document the change in a comment in the JSON file.
+When adding a new handler, implement it in `app/handlers/` and route it from `app/routes.js`, and test it against a real GitHub App instance locally. When adding a CI check (e.g., a new CUDA version requirement), update `config/gpu.json` and document the change in a comment in the JSON file.
 
 ## Known Limitations
 
