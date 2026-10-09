@@ -4,6 +4,7 @@ name: GPU CI
 on:  # yamllint disable-line rule:truthy
   pull_request:
     types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
 
 jobs:
   normalize-title:
@@ -15,7 +16,7 @@ jobs:
     steps:
       - id: check
         env:
-          TITLE: ${{ github.event.pull_request.title }}
+          TITLE: ${{ github.event.pull_request.title || '' }}
         run: |
           lowered="$(printf '%s' "$TITLE" | tr '[:upper:]' '[:lower:]')"
           if [[ "$lowered" == *gpu* || "$lowered" == *cuda* ]]; then
@@ -30,14 +31,17 @@ jobs:
     # Recommended runner labels: self-hosted, linux, x64, gpu
     #
     # Avoid queueing GPU jobs unless a matching
-    # GPU runner is online.
+    # GPU runner is online. Manual dispatch bypasses
+    # the PR gate for controlled testing.
     # The bot can apply a label like `gpu-required` to trigger this job.
     needs: normalize-title
     if: |
-      contains(
-        join(github.event.pull_request.labels.*.name, ','),
-        'gpu-required'
-      ) || needs.normalize-title.outputs.is_gpu == 'true'
+      github.event_name == 'workflow_dispatch' || (
+        contains(
+          join(github.event.pull_request.labels.*.name, ','),
+          'gpu-required'
+        ) || needs.normalize-title.outputs.is_gpu == 'true'
+      )
     runs-on: [self-hosted, linux, x64, gpu]
 
     steps:
