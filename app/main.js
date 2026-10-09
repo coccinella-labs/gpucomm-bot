@@ -4,7 +4,13 @@ import { handleWebhook } from "./routes.js";
 import { verifyWebhookSignature } from "./webhook/verify.js";
 
 const app = express();
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+);
 
 app.get("/", (req, res) => {
   res.status(200).type("text/plain").send("gpucomm-bot up. POST /webhook");
@@ -24,8 +30,8 @@ app.post("/webhook", (req, res, next) => {
   const secret = process.env.WEBHOOK_SECRET;
 
   if (!secret) {
-    console.warn("WEBHOOK_SECRET not set, skipping verification");
-    return next();
+    console.error("WEBHOOK_SECRET not set, rejecting webhook");
+    return res.status(503).json({ error: "Webhook verification unavailable" });
   }
 
   if (!sig) {
@@ -33,7 +39,12 @@ app.post("/webhook", (req, res, next) => {
     return res.sendStatus(401);
   }
 
-  if (!verifyWebhookSignature(req.body, sig, secret)) {
+  if (!Buffer.isBuffer(req.rawBody) || req.rawBody.length === 0) {
+    console.warn("Webhook raw body unavailable for signature verification");
+    return res.sendStatus(401);
+  }
+
+  if (!verifyWebhookSignature(req.rawBody, sig, secret)) {
     console.warn("Invalid webhook signature");
     return res.sendStatus(401);
   }
