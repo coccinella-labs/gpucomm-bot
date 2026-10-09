@@ -1,6 +1,8 @@
 # Runbook
 
-## Commands
+## Planned command surface
+
+These commands are not implemented. Validation is currently automatic only.
 
 ### /gpu-check
 Runs GPU validation
