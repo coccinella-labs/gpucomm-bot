@@ -1,6 +1,7 @@
+---
 name: Bot Basic
 
-on:
+on:  # yamllint disable-line rule:truthy
   pull_request:
   issues:
 
@@ -9,4 +10,3 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "gpucomm-bot active"
-
